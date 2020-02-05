@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"crypto/md5"
 )
 
 type Metadata map[string]string
@@ -75,7 +76,26 @@ func NewUploadFromFile(f *os.File) (*Upload, error) {
 
 	return NewUpload(f, fi.Size(), metadata, fingerprint), nil
 }
+// NewUploadFromFullPathFile creates a new Upload from an absolute path file,
+// this give more unique fingerprint than the above one
+func NewUploadFromFullPathFile(f *os.File, fullPathFile string) (*Upload, error) {
+	fi, err := f.Stat()
 
+	if err != nil {
+		return nil, err
+	}
+
+	metadata := map[string]string{
+		"filename": fi.Name(),
+	}
+
+	fingerprint := fmt.Sprintf("%s-%d-%s-%s", fi.Name(), fi.Size(), fi.ModTime(), fullPathFile)
+	// use md5 rather sha2 for short output
+	b := md5.Sum([]byte(fingerprint))
+	fingerprint = fmt.Sprintf("%x", b)
+
+	return NewUpload(f, fi.Size(), metadata, fingerprint), nil
+}
 // NewUploadFromBytes creates a new upload from a byte array.
 func NewUploadFromBytes(b []byte) *Upload {
 	buffer := bytes.NewReader(b)
